@@ -73,25 +73,26 @@ Builds the database, the read operations and a first dashboard page, end to end,
 - `backend/main.py`: `list_claims`, `get_claim`, `get_policy`, `get_claim_history` and `list_handlers`.
 - Removes `agent/claims.py`, `POST /api/claims/triage`, the triage form and their tests.
 - The dashboard's queue page, in the brand: Instrument Sans, Instrument Serif and JetBrains Mono from Google Fonts, the brand's colors, light and dark mode, and money such as $1,150.00.
+- The e2e backend, moved up from Phase 4 so the queue test starts from a fresh database: `backend/tests/e2e_app.py` runs the app on a throwaway database with a reset route for the tests, on port 8001, with Vite on 5174. The Vite proxy reads its target from `API_URL`.
 
 Success criteria:
 
-- [ ] `uv run pytest -q` passes, with tests for seeding and each read operation.
-- [ ] On an empty database, starting the backend creates `undercover.db` with 25 claims.
-- [ ] `curl -s localhost:8000/api/claims` returns 25 claims, CLM-1001 to CLM-1025, each `"status": "waiting"`, with the customer's name; CLM-1001 is Maya Patel's trip delay for 420.0.
-- [ ] `curl -s localhost:8000/api/claims/CLM-1001` returns the story, 3 items, 4 documents, `"policy_id": "POL-2001"` and `"status": "waiting"`.
-- [ ] `curl -s localhost:8000/api/policies/POL-2001` returns the premium plan, with a deductible of 50.0 and a per-item limit of 300.0.
-- [ ] `curl -s localhost:8000/api/customers/CUS-3001/claims` returns Maya Patel's one earlier claim, CLM-0412, and no email, phone, address or date of birth.
-- [ ] `curl -s -o /dev/null -w "%{http_code}" localhost:8000/api/claims/CLM-9999` prints `404`.
-- [ ] `curl -s localhost:8000/api/handlers` returns Dana Whitfield, Marcus Oyelaran and Priya Raman.
-- [ ] A test reads the OpenAPI schema and checks that every operation has an operation id, a one-line summary and no optional parameters or body fields.
-- [ ] A test checks the database holds exactly the claim ids in `data/claims.json`, and not CLM-1901 from `data/security/`.
-- [ ] `git grep -n "evals" -- backend agent dashboard` prints nothing.
-- [ ] `agent/claims.py`, `POST /api/claims/triage` and `e2e/triage.spec.ts` are gone.
-- [ ] vitest: the queue page shows the rows from a stubbed API, with status labels and amounts such as $1,150.00, and shows an error when the API fails. Coverage stays at 80% or more.
-- [ ] Playwright e2e: the queue shows 25 claims, all Waiting. With `colorScheme: "dark"` the page background is `#04232E`.
-- [ ] With the Playwright MCP server, `localhost:5173` shows the queue in the brand's fonts and colors, and the browser console has no errors.
-- [ ] `npm run check` passes.
+- [x] `uv run pytest -q` passes, with tests for seeding and each read operation.
+- [x] On an empty database, starting the backend creates `undercover.db` with 25 claims.
+- [x] `curl -s localhost:8000/api/claims` returns 25 claims, CLM-1001 to CLM-1025, each `"status": "waiting"`, with the customer's name; CLM-1001 is Maya Patel's trip delay for 420.0.
+- [x] `curl -s localhost:8000/api/claims/CLM-1001` returns the story, 3 items, 4 documents, `"policy_id": "POL-2001"` and `"status": "waiting"`.
+- [x] `curl -s localhost:8000/api/policies/POL-2001` returns the premium plan, with a deductible of 50.0 and a per-item limit of 300.0.
+- [x] `curl -s localhost:8000/api/customers/CUS-3001/claims` returns Maya Patel's one earlier claim, CLM-0412, and no email, phone, address or date of birth.
+- [x] `curl -s -o /dev/null -w "%{http_code}" localhost:8000/api/claims/CLM-9999` prints `404`.
+- [x] `curl -s localhost:8000/api/handlers` returns Dana Whitfield, Marcus Oyelaran and Priya Raman.
+- [x] A test reads the OpenAPI schema and checks that every operation has an operation id, a one-line docstring and no optional parameters or body fields.
+- [x] A test checks the database holds exactly the claim ids in `data/claims.json`, and not CLM-1901 from `data/security/`.
+- [x] `git grep -n "evals" -- backend agent dashboard` prints nothing.
+- [x] `agent/claims.py`, `POST /api/claims/triage` and `e2e/triage.spec.ts` are gone.
+- [x] vitest: the queue page shows the rows from a stubbed API, with status labels and amounts such as $1,150.00, and shows an error when the API fails. Coverage stays at 80% or more.
+- [x] Playwright e2e: the queue shows 25 claims, all Waiting. With `colorScheme: "dark"` the page background is `#04232E`.
+- [x] With the Playwright MCP server, `localhost:5173` shows the queue in the brand's fonts and colors, and the browser console has no errors. (The MCP server isn't set up in this session, so a Playwright script took screenshots in light and dark mode and read the console instead.)
+- [x] `npm run check` passes.
 
 ## Phase 2: Decisions, payments and sign-off
 
@@ -144,7 +145,7 @@ Builds the claim page, live steps and the buttons that start the agent.
 - Routes in the URL hash, without a router library: `#/` for the queue and `#/claims/CLM-1001` for a claim.
 - The claim page: the summary, the story, the items, the documents, the policy (plan, add-ons, trip dates and cost, travelers), the customer's claim history, the agent's decision with its payout, reason and policy section, the payment, and the steps.
 - A Run the agent button on a waiting claim, and a Work the queue button on the queue page. Both pages refresh every second while a claim is in progress.
-- The e2e backend: `backend/tests/e2e_app.py` starts the app with the stub agent and a fresh database. `playwright.config.ts` runs it on port 8001 with Vite on 5174, and the Vite proxy reads its target from an environment variable.
+- The e2e backend from Phase 1 runs the stub agent.
 
 Success criteria:
 
