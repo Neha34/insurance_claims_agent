@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { claim, history, policy } from "./fixtures";
@@ -43,4 +43,29 @@ it("opens a claim from its address, and goes back to the queue", async () => {
   expect(
     await screen.findByRole("heading", { name: "The queue" }),
   ).toBeDefined();
+});
+
+it("opens the instructions from the navigation", async () => {
+  stubApi({
+    "GET /api/claims": () => [],
+    "GET /api/instructions": () => ({ instructions: "# The UnderCover Agent" }),
+  });
+  render(<App />);
+  const nav = screen.getByRole("navigation", { name: "Pages" });
+  expect(
+    within(nav)
+      .getByRole("link", { name: "Queue" })
+      .getAttribute("aria-current"),
+  ).toBe("page");
+
+  act(() => {
+    window.location.hash = "#/instructions";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  });
+  expect(await screen.findByText("# The UnderCover Agent")).toBeDefined();
+  expect(
+    within(nav)
+      .getByRole("link", { name: "Instructions" })
+      .getAttribute("aria-current"),
+  ).toBe("page");
 });

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { ClaimPage } from "./ClaimPage";
+import { Instructions } from "./Instructions";
 import { Queue } from "./Queue";
 
 function subscribe(onChange: () => void) {
@@ -11,9 +12,16 @@ function subscribe(onChange: () => void) {
 
 const currentHash = () => window.location.hash;
 
+function Page({ hash }: Readonly<{ hash: string }>) {
+  const claimId = /^#\/claims\/(CLM-\d+)$/.exec(hash)?.[1];
+  if (claimId) return <ClaimPage key={claimId} claimId={claimId} />;
+  if (hash === "#/instructions") return <Instructions />;
+  return <Queue />;
+}
+
 export function App() {
   const hash = useSyncExternalStore(subscribe, currentHash);
-  const claimId = /^#\/claims\/(CLM-\d+)$/.exec(hash)?.[1];
+  const onInstructions = hash === "#/instructions";
 
   return (
     <>
@@ -21,9 +29,20 @@ export function App() {
         <a className="brand" href="#/">
           UnderCover<em>Claims</em>
         </a>
+        <nav className="nav" aria-label="Pages">
+          <a href="#/" aria-current={onInstructions ? undefined : "page"}>
+            Queue
+          </a>
+          <a
+            href="#/instructions"
+            aria-current={onInstructions ? "page" : undefined}
+          >
+            Instructions
+          </a>
+        </nav>
       </header>
       <main>
-        {claimId ? <ClaimPage key={claimId} claimId={claimId} /> : <Queue />}
+        <Page hash={hash} />
       </main>
     </>
   );

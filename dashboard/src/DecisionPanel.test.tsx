@@ -1,12 +1,18 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { DecisionPanel } from "./DecisionPanel";
 import { approved, claim } from "./fixtures";
+import { stubApi } from "./stubApi";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+const noop = () => undefined;
 
 it("shows an approval, its reason, section and payment", () => {
-  render(<DecisionPanel claim={approved} />);
+  render(<DecisionPanel claim={approved} onChange={noop} />);
   expect(screen.getByText("Approve")).toBeDefined();
   expect(screen.getByText("$420.00")).toBeDefined();
   expect(
@@ -17,6 +23,7 @@ it("shows an approval, its reason, section and payment", () => {
 });
 
 it("says when an over-limit payment waits for sign-off", () => {
+  stubApi({ "GET /api/handlers": () => [] });
   if (!approved.decision) throw new Error("The fixture has no decision");
   render(
     <DecisionPanel
@@ -26,6 +33,7 @@ it("says when an over-limit payment waits for sign-off", () => {
         decision: { ...approved.decision, payout: 2900 },
         payment: null,
       }}
+      onChange={noop}
     />,
   );
   expect(
@@ -46,13 +54,16 @@ it("shows who signed off a payment", () => {
           signed_off_at: "2026-10-21T23:09:00+00:00",
         },
       }}
+      onChange={noop}
     />,
   );
   expect(screen.getByText(/signed off by Dana Whitfield$/)).toBeDefined();
 });
 
 it("says when an approval is not paid yet", () => {
-  render(<DecisionPanel claim={{ ...approved, payment: null }} />);
+  render(
+    <DecisionPanel claim={{ ...approved, payment: null }} onChange={noop} />,
+  );
   expect(screen.getByText("Not paid yet.")).toBeDefined();
 });
 
@@ -65,6 +76,7 @@ it("shows a decline without a payout", () => {
         decision: { ...approved.decision, decision: "decline", payout: 0 },
         payment: null,
       }}
+      onChange={noop}
     />,
   );
   expect(screen.getByText("Decline")).toBeDefined();
@@ -73,6 +85,11 @@ it("shows a decline without a payout", () => {
 });
 
 it("says when the agent is working", () => {
-  render(<DecisionPanel claim={{ ...claim, status: "in_progress" }} />);
+  render(
+    <DecisionPanel
+      claim={{ ...claim, status: "in_progress" }}
+      onChange={noop}
+    />,
+  );
   expect(screen.getByText("The agent is working on this claim.")).toBeDefined();
 });

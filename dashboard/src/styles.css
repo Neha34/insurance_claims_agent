@@ -431,3 +431,35 @@ th.number {
     padding-right: 1rem;
   }
 }
+
+.sign-off {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sign-off label {
+  font-weight: 600;
+}
+
+.sign-off select {
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  background: var(--page);
+  color: var(--ink);
+}
+
+.sign-off .alert {
+  flex-basis: 100%;
+}
+
+.instructions {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

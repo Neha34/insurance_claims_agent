@@ -108,6 +108,13 @@ export interface Step {
   created_at: string;
 }
 
+export interface Handler {
+  handler_id: string;
+  name: string;
+  role: string;
+  can_approve_over_limit: boolean;
+}
+
 export interface Run {
   claim_id: string;
   thread_id: string;
@@ -139,3 +146,8 @@ export const listSteps = (claimId: string) =>
 export const startRun = (claimId: string) =>
   post<Run>(`/claims/${claimId}/runs`);
 export const workQueue = () => post<{ claim_ids: string[] }>("/queue/runs");
+export const listHandlers = () => request<Handler[]>("/handlers");
+export const signOff = (claimId: string, handlerId: string) =>
+  post<Claim>(`/claims/${claimId}/sign-off`, { handler_id: handlerId });
+export const getInstructions = () =>
+  request<{ instructions: string }>("/instructions");

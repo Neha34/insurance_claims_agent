@@ -91,7 +91,7 @@ export function ClaimPage({ claimId }: Readonly<{ claimId: string }>) {
           <ClaimRecord claim={claim} />
         </div>
         <div className="stack">
-          <DecisionPanel claim={claim} />
+          <DecisionPanel claim={claim} onChange={reload} />
           <Steps steps={steps} working={claim.status === "in_progress"} />
           <PolicyPanel policy={policy} />
           <HistoryPanel history={history} />

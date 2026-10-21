@@ -1,6 +1,6 @@
 # Status
 
-The pilot is being built from `docs/PLAN.md`. Phases 1 to 4 of 6 are done.
+The pilot is being built from `docs/PLAN.md`. Phases 1 to 5 of 6 are done.
 
 ## What's built
 
@@ -11,8 +11,8 @@ The pilot is being built from `docs/PLAN.md`. Phases 1 to 4 of 6 are done.
 - `backend/instructions.md`: the agent's instructions. `get_instructions` serves them followed by `data/policy_wording.md`.
 - The run operations: `start_run` starts the agent on a waiting claim in the background, `work_queue` works through the waiting claims one at a time, and `add_step` and `list_steps` record and show the steps. A run that fails or ends undecided puts the claim back to waiting, with a step that says why.
 - `agent/tests/stub.py`: the stub model every test uses.
-- `dashboard/`: in the brand, in light and dark mode. The queue page (`#/`) shows where each claim stands and has a Work the queue button. The claim page (`#/claims/CLM-1001`) shows the claim in full, its policy, the customer's earlier claims, the agent's decision and payment, and the agent's steps, with a Run the agent button on a waiting claim. Both refresh every second while the agent works.
-- `e2e/`: Playwright tests of the queue, a claim's run and working the queue, against `backend/tests/e2e_app.py` on port 8001 with a throwaway database and the stub agent, and Vite on 5174.
+- `dashboard/`: in the brand, in light and dark mode. The queue page (`#/`) shows where each claim stands and has a Work the queue button. The claim page (`#/claims/CLM-1001`) shows the claim in full, its policy, the customer's earlier claims, the agent's decision and payment, and the agent's steps, with a Run the agent button on a waiting claim. Both refresh every second while the agent works. On a claim waiting for sign-off, a handler picks their name and signs off, which makes the payment. The instructions page (`#/instructions`) shows the agent's instructions, read only.
+- `e2e/`: Playwright tests of the queue, a claim's run, working the queue, sign-off and the instructions, against `backend/tests/e2e_app.py` on port 8001 with a throwaway database and the stub agent, and Vite on 5174.
 
 ## Running it
 

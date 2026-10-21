@@ -166,12 +166,12 @@ Builds the handler's sign-off and the read-only instructions page.
 
 Success criteria:
 
-- [ ] vitest: picking Dana Whitfield and clicking Sign off and pay posts `{"handler_id": "HND-01"}` to `sign_off_claim` and then shows the payment and who signed off. Coverage stays at 80% or more.
-- [ ] vitest: the instructions page shows the stubbed text and has no text box or edit button.
-- [ ] Playwright e2e: run the stub agent on CLM-1012; it shows Waiting for sign-off and no payment. Sign off as Dana Whitfield; it shows Decided, paid $2,900.00, signed off by Dana Whitfield.
-- [ ] Playwright e2e: the instructions page shows "How we work out your payment".
-- [ ] With the Playwright MCP server, the sign-off flow and the instructions page look right in the brand, and the console has no errors.
-- [ ] `npm run check` passes.
+- [x] vitest: picking Dana Whitfield and clicking Sign off and pay posts `{"handler_id": "HND-01"}` to `sign_off_claim` and then shows the payment and who signed off. Coverage stays at 80% or more.
+- [x] vitest: the instructions page shows the stubbed text and has no text box or edit button.
+- [x] Playwright e2e: run the stub agent on CLM-1012; it shows Waiting for sign-off and no payment. Sign off as Dana Whitfield; it shows Decided, paid $2,900.00, signed off by Dana Whitfield.
+- [x] Playwright e2e: the instructions page shows "How we work out your payment".
+- [x] With the Playwright MCP server, the sign-off flow and the instructions page look right in the brand, and the console has no errors. (Checked with a Playwright script and screenshots, as in Phase 1.)
+- [x] `npm run check` passes.
 
 ## Phase 6: The pilot run
 
