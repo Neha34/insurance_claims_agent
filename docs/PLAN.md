@@ -175,7 +175,9 @@ Success criteria:
 
 ## Phase 6: The pilot run
 
-Runs the real agent on the queue, fixes what a real model shows up, and finishes the documents. This phase needs `OPENROUTER_API_KEY` in `.env`. The queue is about 25 claims of five or six model calls each; on `openrouter/free`, run a few claims rather than the whole queue to stay inside the free daily allowance.
+Runs the real agent on the queue, fixes what a real model shows up, and finishes the documents. This phase needs `OPENROUTER_API_KEY` in `.env`.
+
+Not done yet: there was no `.env` when Phases 1 to 5 were built, so the documents are updated and the run with a real model waits for the key. `npm run check` passed at the end of Phase 5 and again after the documents changed. The queue is about 25 claims of five or six model calls each; on `openrouter/free`, run a few claims rather than the whole queue to stay inside the free daily allowance.
 
 - Fixes only what the real run shows to be broken, such as a tool the model misuses or an unclear instruction. It doesn't tune the instructions to the handlers' decisions, which this build never opens.
 - `docs/STATUS.md`: what's built, how to run it and how to start over.
@@ -187,7 +189,7 @@ Success criteria:
 - [ ] `GET /api/claims` shows every decided claim with a decision; each has a reason of two or three sentences and a policy section.
 - [ ] Every approval over $1,000 is waiting for sign-off with no payment. Every approval up to $1,000 is paid exactly its payout.
 - [ ] With the Playwright MCP server, the steps of a claim appear one by one while the real agent works, and signing off an over-limit approval pays it.
-- [ ] `docs/STATUS.md` and `README.md` describe the pilot as built.
+- [x] `docs/STATUS.md` and `README.md` describe the pilot as built.
 - [ ] `npm run check` passes, still with the stub model.
 
 ## Not in this build
