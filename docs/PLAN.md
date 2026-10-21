@@ -104,14 +104,14 @@ Builds the rules in the backend before any agent exists, so they're tested on th
 
 Success criteria:
 
-- [ ] `uv run pytest -q` passes, with a test for every rule, including 403, 404, 409 and 422 answers.
-- [ ] Deciding CLM-1001 as an approval for 420.0 returns 200 and the claim is decided. Paying 420.0 returns 200 and records the payment. Paying again returns 409.
-- [ ] Deciding CLM-1012 as an approval for 2900.0 sets it to waiting for sign-off. `curl -s -X POST localhost:8000/api/claims/CLM-1012/payment -H "Content-Type: application/json" -d '{"amount": 2900.0}'` returns 403 with a message saying the payment waits for a handler's sign-off, and `get_claim` shows no payment.
-- [ ] Signing off CLM-1012 as HND-01 returns 200; the claim is decided, paid 2900.0 and signed off by HND-01. Signing off as HND-99 returns 404.
-- [ ] Tests show a payout of exactly $1,000.00 pays without sign-off and $1,000.01 is refused.
-- [ ] Paying an amount that differs from the approved payout returns 409.
-- [ ] A decline with a payout of 50.0 returns 422. Deciding a claim that's already decided returns 409.
-- [ ] `npm run check` passes.
+- [x] `uv run pytest -q` passes, with a test for every rule, including 403, 404, 409 and 422 answers.
+- [x] Deciding CLM-1001 as an approval for 420.0 returns 200 and the claim is decided. Paying 420.0 returns 200 and records the payment. Paying again returns 409.
+- [x] Deciding CLM-1012 as an approval for 2900.0 sets it to waiting for sign-off. `curl -s -X POST localhost:8000/api/claims/CLM-1012/payment -H "Content-Type: application/json" -d '{"amount": 2900.0}'` returns 403 with a message saying the payment waits for a handler's sign-off, and `get_claim` shows no payment.
+- [x] Signing off CLM-1012 as HND-01 returns 200; the claim is decided, paid 2900.0 and signed off by HND-01. Signing off as HND-99 returns 404.
+- [x] Tests show a payout of exactly $1,000.00 pays without sign-off and $1,000.01 is refused.
+- [x] Paying an amount that differs from the approved payout returns 409.
+- [x] A decline with a payout of 50.0 returns 422. Deciding a claim that's already decided returns 409.
+- [x] `npm run check` passes.
 
 ## Phase 3: The UnderCover Agent
 

@@ -4,16 +4,19 @@ import json
 import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 from backend import db
 
 load_dotenv(override=True)
+
+APPROVAL_LIMIT: float = db.load("company.json")["payout_approval_limit"]
 
 
 @asynccontextmanager
@@ -64,6 +67,29 @@ class Handler(BaseModel):
     can_approve_over_limit: bool
 
 
+class DecisionRequest(BaseModel):
+    decision: Decision
+    payout: float = Field(ge=0)
+    reason: str = Field(min_length=1)
+    policy_section: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def payout_fits_the_decision(self) -> Self:
+        if self.decision == Decision.APPROVE and self.payout <= 0:
+            raise ValueError("An approval needs a payout above $0")
+        if self.decision != Decision.APPROVE and self.payout != 0:
+            raise ValueError("A decline or a referral has a payout of $0")
+        return self
+
+
+class PaymentRequest(BaseModel):
+    amount: float = Field(gt=0)
+
+
+class SignOffRequest(BaseModel):
+    handler_id: str
+
+
 CLAIM = """
 SELECT claims.*, json_extract(handlers.record, '$.name') AS signed_off_by_name
 FROM claims LEFT JOIN handlers ON handlers.handler_id = claims.signed_off_by
@@ -93,7 +119,7 @@ def claim_summary(row: sqlite3.Row) -> ClaimSummary:
     )
 
 
-def claim_view(row: sqlite3.Row) -> dict[str, Any]:
+def claim_state(row: sqlite3.Row) -> dict[str, Any]:
     decision = None
     if row["decision"] is not None:
         decision = {
@@ -114,13 +140,35 @@ def claim_view(row: sqlite3.Row) -> dict[str, Any]:
     if row["paid_at"] is not None:
         payment = {"amount": row["paid_amount"], "paid_at": row["paid_at"]}
     return {
-        **json.loads(row["record"]),
+        "claim_id": row["claim_id"],
         "status": row["status"],
         "thread_id": row["thread_id"],
         "decision": decision,
         "sign_off": sign_off,
         "payment": payment,
     }
+
+
+def claim_view(row: sqlite3.Row) -> dict[str, Any]:
+    return {**json.loads(row["record"]), **claim_state(row)}
+
+
+def dollars(amount: float) -> str:
+    return f"${amount:,.2f}"
+
+
+def now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def pay(conn: sqlite3.Connection, claim_id: str, amount: float) -> None:
+    paid = conn.execute(
+        "UPDATE claims SET paid_amount = ?, paid_at = ?"
+        " WHERE claim_id = ? AND paid_at IS NULL",
+        (amount, now(), claim_id),
+    ).rowcount
+    if not paid:
+        raise HTTPException(409, f"Claim {claim_id} is already paid")
 
 
 @app.get("/api/health", operation_id="health")
@@ -183,3 +231,90 @@ def list_handlers() -> list[Handler]:
             "SELECT record FROM handlers ORDER BY handler_id"
         ).fetchall()
     return [Handler.model_validate(json.loads(row["record"])) for row in rows]
+
+
+@app.post("/api/claims/{claim_id}/decision", operation_id="decide_claim")
+def decide_claim(claim_id: str, request: DecisionRequest) -> dict[str, Any]:
+    """Record the decision on a claim, with its payout, reason and policy section."""
+    payout = round(request.payout, 2)
+    status = Status.WAITING_FOR_SIGN_OFF if payout > APPROVAL_LIMIT else Status.DECIDED
+    with db.connect() as conn:
+        one(conn, CLAIM, claim_id, "claim")
+        decided = conn.execute(
+            "UPDATE claims SET status = ?, decision = ?, payout = ?, reason = ?,"
+            " policy_section = ?, decided_at = ?"
+            " WHERE claim_id = ? AND status IN (?, ?)",
+            (
+                status,
+                request.decision,
+                payout,
+                request.reason,
+                request.policy_section,
+                now(),
+                claim_id,
+                Status.WAITING,
+                Status.IN_PROGRESS,
+            ),
+        ).rowcount
+        if not decided:
+            raise HTTPException(409, f"Claim {claim_id} is already decided")
+        return claim_state(one(conn, CLAIM, claim_id, "claim"))
+
+
+@app.post("/api/claims/{claim_id}/payment", operation_id="pay_claim")
+def pay_claim(claim_id: str, request: PaymentRequest) -> dict[str, Any]:
+    """Pay the approved payout on a claim, unless it waits for a handler's sign-off."""
+    with db.connect() as conn:
+        row = one(conn, CLAIM, claim_id, "claim")
+        if row["decision"] != Decision.APPROVE:
+            raise HTTPException(409, f"Claim {claim_id} is not approved")
+        if row["paid_at"] is not None:
+            raise HTTPException(409, f"Claim {claim_id} is already paid")
+        if round(request.amount, 2) != row["payout"]:
+            raise HTTPException(
+                409,
+                f"The approved payout on claim {claim_id} is {dollars(row['payout'])}",
+            )
+        if row["payout"] > APPROVAL_LIMIT and row["signed_off_by"] is None:
+            raise HTTPException(
+                403,
+                f"A payout over {dollars(APPROVAL_LIMIT)} waits for a handler's"
+                f" sign-off. Claim {claim_id} is waiting for sign-off.",
+            )
+        pay(conn, claim_id, row["payout"])
+        return claim_state(one(conn, CLAIM, claim_id, "claim"))
+
+
+@app.post("/api/claims/{claim_id}/sign-off", operation_id="sign_off_claim")
+def sign_off_claim(claim_id: str, request: SignOffRequest) -> dict[str, Any]:
+    """Sign off an approval over the limit as a handler, which makes the payment."""
+    with db.connect() as conn:
+        one(conn, CLAIM, claim_id, "claim")
+        handler = Handler.model_validate_json(
+            one(
+                conn,
+                "SELECT record FROM handlers WHERE handler_id = ?",
+                request.handler_id,
+                "handler",
+            )["record"]
+        )
+        if not handler.can_approve_over_limit:
+            raise HTTPException(
+                403,
+                f"{handler.name} can't sign off payouts over {dollars(APPROVAL_LIMIT)}",
+            )
+        signed = conn.execute(
+            "UPDATE claims SET status = ?, signed_off_by = ?, signed_off_at = ?"
+            " WHERE claim_id = ? AND status = ?",
+            (
+                Status.DECIDED,
+                handler.handler_id,
+                now(),
+                claim_id,
+                Status.WAITING_FOR_SIGN_OFF,
+            ),
+        ).rowcount
+        if not signed:
+            raise HTTPException(409, f"Claim {claim_id} is not waiting for sign-off")
+        pay(conn, claim_id, one(conn, CLAIM, claim_id, "claim")["payout"])
+        return claim_state(one(conn, CLAIM, claim_id, "claim"))
