@@ -149,12 +149,12 @@ Builds the claim page, live steps and the buttons that start the agent.
 
 Success criteria:
 
-- [ ] vitest: the claim page shows a stubbed claim, its policy, history, decision and steps; Run the agent posts to `start_run` and shows In progress; refreshing stops once the claim is decided. Coverage stays at 80% or more.
-- [ ] Playwright e2e: open CLM-1001, click Run the agent, see the steps appear and the decision Approve, $420.00 with its reason and policy section, and the payment of $420.00. Back on the queue, CLM-1001 is Decided.
-- [ ] Playwright e2e: Work the queue moves every claim out of Waiting.
-- [ ] The e2e run passes with no `OPENROUTER_API_KEY` set.
-- [ ] With the Playwright MCP server, `localhost:5173/#/claims/CLM-1003` shows the story, the items, the documents, the policy and the claim history, and the console has no errors.
-- [ ] `npm run check` passes.
+- [x] vitest: the claim page shows a stubbed claim, its policy, history, decision and steps; Run the agent posts to `start_run` and shows In progress; refreshing stops once the claim is decided. Coverage stays at 80% or more.
+- [x] Playwright e2e: open CLM-1001, click Run the agent, see the steps appear and the decision Approve, $420.00 with its reason and policy section, and the payment of $420.00. Back on the queue, CLM-1001 is Decided.
+- [x] Playwright e2e: Work the queue moves every claim out of Waiting.
+- [x] The e2e run passes with no `OPENROUTER_API_KEY` set.
+- [x] With the Playwright MCP server, `localhost:5173/#/claims/CLM-1003` shows the story, the items, the documents, the policy and the claim history, and the console has no errors. (Checked with a Playwright script and screenshots, as in Phase 1.)
+- [x] `npm run check` passes.
 
 ## Phase 5: Sign-off and the instructions
 

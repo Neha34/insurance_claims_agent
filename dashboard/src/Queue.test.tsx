@@ -1,4 +1,5 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import type { ClaimSummary } from "./api";
 import { Queue } from "./Queue";
@@ -62,4 +63,53 @@ it("says when the queue could not be loaded", async () => {
   expect((await screen.findByText(/could not be loaded/)).className).toBe(
     "alert",
   );
+});
+
+it("links each claim to its page", async () => {
+  stubApi({ "GET /api/claims": () => [waiting] });
+  render(<Queue />);
+  const link = await screen.findByRole("link", { name: "CLM-1002" });
+  expect(link.getAttribute("href")).toBe("#/claims/CLM-1002");
+});
+
+it("works the queue and refreshes while claims are waiting", async () => {
+  let claims = [waiting];
+  const fetchMock = stubApi({
+    "GET /api/claims": () => claims,
+    "POST /api/queue/runs": () => {
+      claims = [{ ...waiting, status: "in_progress" }];
+      return { claim_ids: ["CLM-1002"] };
+    },
+  });
+  render(<Queue />);
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Work the queue" }),
+  );
+  expect(fetchMock).toHaveBeenCalledWith(
+    "/api/queue/runs",
+    expect.objectContaining({ method: "POST" }),
+  );
+  expect(
+    await screen.findByRole("cell", { name: "In progress" }),
+  ).toBeDefined();
+
+  claims = [{ ...decided, claim_id: "CLM-1002" }];
+  expect(
+    await screen.findByRole("cell", { name: "Decided" }, { timeout: 3000 }),
+  ).toBeDefined();
+  expect(screen.getByRole("button", { name: "Work the queue" })).toHaveProperty(
+    "disabled",
+    true,
+  );
+});
+
+it("says when the queue could not be started", async () => {
+  stubApi({ "GET /api/claims": () => [waiting] });
+  render(<Queue />);
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Work the queue" }),
+  );
+  expect(
+    await screen.findByText("The agent could not be started on the queue"),
+  ).toBeDefined();
 });

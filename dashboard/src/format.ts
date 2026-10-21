@@ -1,4 +1,4 @@
-import type { Decision, Status } from "./api";
+import type { Decision, Status, StepKind } from "./api";
 
 const dollars = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -6,6 +6,12 @@ const dollars = new Intl.NumberFormat("en-US", {
 });
 
 export const money = (amount: number) => dollars.format(amount);
+
+export const when = (timestamp: string) =>
+  new Date(timestamp).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 
 export const label = (name: string) =>
   name.charAt(0).toUpperCase() + name.slice(1).replaceAll("_", " ");
@@ -21,4 +27,11 @@ export const DECISIONS: Record<Decision, string> = {
   approve: "Approve",
   decline: "Decline",
   refer: "Refer",
+};
+
+export const STEP_KINDS: Record<StepKind, string> = {
+  tool_call: "Calls",
+  tool_result: "Result",
+  message: "Says",
+  error: "Error",
 };
