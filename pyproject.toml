@@ -1,0 +1,47 @@
+[project]
+name = "insurance-claims-agent"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.159.1",
+    "python-dotenv>=1.2.4",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.1",
+]
+
+[tool.ruff]
+include = ["backend/**/*.py", "agent/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "SIM", "UP", "PL", "S", "PT", "FAST", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"*/tests/*" = ["S101", "PLR2004"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend", "agent"]
+pythonpath = ["."]
+addopts = "--import-mode=importlib --cov --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["backend", "agent"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+
+[tool.pyright]
+include = ["backend", "agent"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
