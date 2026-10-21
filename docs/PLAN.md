@@ -126,17 +126,17 @@ Builds the agent, its instructions and the operations that run it.
 
 Success criteria:
 
-- [ ] `uv run pytest -q` passes, with no network calls and no model calls.
-- [ ] With a stub that reads CLM-1001, its policy and its history, approves 420.0 and pays, `run("CLM-1001", thread_id)` makes each call through the API; the claim ends decided and paid 420.0, and its steps are recorded in order under the thread id.
-- [ ] With a stub that approves CLM-1012 for 2900.0 and then calls `pay_claim`, the tool's result is the 403 refusal, and the claim waits for sign-off with no payment.
-- [ ] A stub that raises mid-run, and one that ends without deciding, each leave the claim waiting with a step that says what happened.
-- [ ] A test checks the tool schemas: `decide_claim` and `pay_claim` take no claim id, so the agent can act only on the claim it was given.
-- [ ] `start_run` returns 202 with a thread id and sets the claim to in progress; a second `start_run` on the same claim returns 409.
-- [ ] `work_queue` with the stub decides every waiting claim, one at a time.
-- [ ] Tests show the model is `openai/gpt-6-luna` with low reasoning effort by default, and `openrouter/free` when `MODEL_NAME=openrouter/free`.
-- [ ] `curl -s localhost:8000/api/instructions` returns the instructions, followed by the policy wording, from "Version 2026.1" to section 12.
-- [ ] `git grep -n "data/" -- agent ":!agent/tests"` prints nothing: the agent reads no files.
-- [ ] `npm run check` passes.
+- [x] `uv run pytest -q` passes, with no network calls and no model calls.
+- [x] With a stub that reads CLM-1001, its policy and its history, approves 420.0 and pays, `run("CLM-1001", thread_id)` makes each call through the API; the claim ends decided and paid 420.0, and its steps are recorded in order under the thread id.
+- [x] With a stub that approves CLM-1012 for 2900.0 and then calls `pay_claim`, the tool's result is the 403 refusal, and the claim waits for sign-off with no payment.
+- [x] A stub that raises mid-run, and one that ends without deciding, each leave the claim waiting with a step that says what happened.
+- [x] A test checks the tool schemas: `decide_claim` and `pay_claim` take no claim id, so the agent can act only on the claim it was given.
+- [x] `start_run` returns 202 with a thread id and sets the claim to in progress; a second `start_run` on the same claim returns 409.
+- [x] `work_queue` with the stub decides every waiting claim, one at a time.
+- [x] Tests show the model is `openai/gpt-6-luna` with low reasoning effort by default, and `openrouter/free` when `MODEL_NAME=openrouter/free`.
+- [x] `curl -s localhost:8000/api/instructions` returns the instructions, followed by the policy wording, from "Version 2026.1" to section 12.
+- [x] `git grep -n "data/" -- agent ":!agent/tests"` prints nothing: the agent reads no files.
+- [x] `npm run check` passes.
 
 ## Phase 4: The claim page and the agent's steps
 

@@ -6,17 +6,21 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from enum import StrEnum
+from pathlib import Path
 from typing import Any, Self
+from uuid import uuid4
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel, Field, model_validator
 
+from agent import agent
 from backend import db
 
 load_dotenv(override=True)
 
 APPROVAL_LIMIT: float = db.load("company.json")["payout_approval_limit"]
+INSTRUCTIONS = Path(__file__).parent / "instructions.md"
 
 
 @asynccontextmanager
@@ -88,6 +92,37 @@ class PaymentRequest(BaseModel):
 
 class SignOffRequest(BaseModel):
     handler_id: str
+
+
+class StepKind(StrEnum):
+    MESSAGE = "message"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"
+    ERROR = "error"
+
+
+class StepRequest(BaseModel):
+    thread_id: str
+    kind: StepKind
+    text: str
+
+
+class Step(StepRequest):
+    step_id: int
+    created_at: str
+
+
+class Run(BaseModel):
+    claim_id: str
+    thread_id: str
+
+
+class QueueRun(BaseModel):
+    claim_ids: list[str]
+
+
+class Instructions(BaseModel):
+    instructions: str
 
 
 CLAIM = """
@@ -318,3 +353,112 @@ def sign_off_claim(claim_id: str, request: SignOffRequest) -> dict[str, Any]:
             raise HTTPException(409, f"Claim {claim_id} is not waiting for sign-off")
         pay(conn, claim_id, one(conn, CLAIM, claim_id, "claim")["payout"])
         return claim_state(one(conn, CLAIM, claim_id, "claim"))
+
+
+@app.get("/api/instructions", operation_id="get_instructions")
+def get_instructions() -> Instructions:
+    """Get the agent's instructions, followed by the policy wording."""
+    wording = (db.DATA / "policy_wording.md").read_text(encoding="utf-8")
+    return Instructions(
+        instructions=INSTRUCTIONS.read_text(encoding="utf-8") + "\n" + wording
+    )
+
+
+def record_step(claim_id: str, thread_id: str, kind: StepKind, text: str) -> Step:
+    created_at = now()
+    with db.connect() as conn:
+        step_id = conn.execute(
+            "INSERT INTO steps (claim_id, thread_id, kind, text, created_at)"
+            " VALUES (?, ?, ?, ?, ?) RETURNING step_id",
+            (claim_id, thread_id, kind, text, created_at),
+        ).fetchone()["step_id"]
+    return Step(
+        step_id=step_id,
+        thread_id=thread_id,
+        kind=kind,
+        text=text,
+        created_at=created_at,
+    )
+
+
+def start(claim_id: str) -> str | None:
+    """Put a waiting claim in progress under a new thread id."""
+    thread_id = str(uuid4())
+    with db.connect() as conn:
+        started = conn.execute(
+            "UPDATE claims SET status = ?, thread_id = ?"
+            " WHERE claim_id = ? AND status = ?",
+            (Status.IN_PROGRESS, thread_id, claim_id, Status.WAITING),
+        ).rowcount
+    return thread_id if started else None
+
+
+def run_agent(claim_id: str, thread_id: str) -> None:
+    """Run the agent, and put the claim back to waiting if it ends undecided."""
+    try:
+        agent.run(claim_id, thread_id)
+    except Exception as error:  # any failure goes on the claim, for the team to see
+        record_step(claim_id, thread_id, StepKind.ERROR, f"The run failed: {error}")
+    with db.connect() as conn:
+        undecided = conn.execute(
+            "UPDATE claims SET status = ? WHERE claim_id = ? AND status = ?"
+            " AND thread_id = ?",
+            (Status.WAITING, claim_id, Status.IN_PROGRESS, thread_id),
+        ).rowcount
+    if undecided:
+        record_step(
+            claim_id,
+            thread_id,
+            StepKind.ERROR,
+            "The run ended without a decision, so the claim is back to waiting.",
+        )
+
+
+def work_through(claim_ids: list[str]) -> None:
+    for claim_id in claim_ids:
+        if thread_id := start(claim_id):
+            run_agent(claim_id, thread_id)
+
+
+@app.post("/api/claims/{claim_id}/runs", operation_id="start_run", status_code=202)
+def start_run(claim_id: str, background: BackgroundTasks) -> Run:
+    """Start the agent on a waiting claim, under a new thread id."""
+    with db.connect() as conn:
+        one(conn, CLAIM, claim_id, "claim")
+    thread_id = start(claim_id)
+    if thread_id is None:
+        raise HTTPException(409, f"Claim {claim_id} is not waiting")
+    background.add_task(run_agent, claim_id, thread_id)
+    return Run(claim_id=claim_id, thread_id=thread_id)
+
+
+@app.post("/api/queue/runs", operation_id="work_queue", status_code=202)
+def work_queue(background: BackgroundTasks) -> QueueRun:
+    """Start the agent on each waiting claim in turn, one at a time."""
+    with db.connect() as conn:
+        rows = conn.execute(
+            "SELECT claim_id FROM claims WHERE status = ? ORDER BY claim_id",
+            (Status.WAITING,),
+        ).fetchall()
+    claim_ids = [row["claim_id"] for row in rows]
+    background.add_task(work_through, claim_ids)
+    return QueueRun(claim_ids=claim_ids)
+
+
+@app.post("/api/claims/{claim_id}/steps", operation_id="add_step")
+def add_step(claim_id: str, request: StepRequest) -> Step:
+    """Record one step of the agent's run on a claim."""
+    with db.connect() as conn:
+        one(conn, CLAIM, claim_id, "claim")
+    return record_step(claim_id, request.thread_id, request.kind, request.text)
+
+
+@app.get("/api/claims/{claim_id}/steps", operation_id="list_steps")
+def list_steps(claim_id: str) -> list[Step]:
+    """List the steps of the agent's runs on a claim, in order."""
+    with db.connect() as conn:
+        one(conn, CLAIM, claim_id, "claim")
+        rows = conn.execute(
+            "SELECT * FROM steps WHERE claim_id = ? ORDER BY step_id", (claim_id,)
+        ).fetchall()
+    return [Step.model_validate(dict(row)) for row in rows]
