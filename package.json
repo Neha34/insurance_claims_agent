@@ -7,7 +7,7 @@
     "format": "uv run ruff format && prettier --write -u dashboard e2e *.config.* *.json *.md *.yml",
     "check": "npm run check:python && npm run check:ts && npm run e2e",
     "check:python": "uv run ruff format --check && uv run ruff check && pyright && uv run pytest -q",
-    "dev:backend": "uv run -m uvicorn backend.main:app --reload --reload-dir backend",
+    "dev:backend": "uv run -m uvicorn backend.main:app --reload --reload-dir backend --reload-dir agent",
     "dev:dashboard": "vite dashboard",
     "check:ts": "prettier --check -u dashboard e2e *.config.* && eslint dashboard e2e *.config.* && tsc && vitest run --root dashboard --coverage",
     "e2e": "playwright test"
