@@ -37,7 +37,8 @@ test("the agent decides a claim and the page shows its steps", async ({
   await page.getByRole("link", { name: "Back to the queue" }).click();
   const row = page.getByRole("row").filter({ hasText: "CLM-1001" });
   await expect(row).toContainText("Decided");
-  await expect(row).toContainText("Approve, $420.00");
+  await expect(row.getByRole("cell").nth(7)).toHaveText("Approve");
+  await expect(row.getByRole("cell").nth(8)).toHaveText("$420.00");
 });
 
 test("working the queue moves every claim out of waiting", async ({ page }) => {

@@ -37,14 +37,55 @@ it("lists the claims with their status, amounts and decisions", async () => {
   render(<Queue />);
   const rows = await screen.findAllByRole("row");
   expect(rows).toHaveLength(3);
-  const first = within(rows[1]);
-  expect(first.getByText("CLM-1001")).toBeDefined();
-  expect(first.getByText("Trip delay")).toBeDefined();
-  expect(first.getByText("Decided")).toBeDefined();
-  expect(first.getByText("Approve, $420.00")).toBeDefined();
-  const second = within(rows[2]);
-  expect(second.getByText("$1,150.00")).toBeDefined();
-  expect(second.getByText("Waiting")).toBeDefined();
+  const texts = (row: HTMLElement, role: "columnheader" | "cell") =>
+    within(row)
+      .getAllByRole(role)
+      .map((cell) => cell.textContent);
+  expect(texts(rows[0], "columnheader")).toEqual([
+    "Claim",
+    "Customer",
+    "Type",
+    "Summary",
+    "Claimed",
+    "Submitted",
+    "Status",
+    "Decision",
+    "Payout",
+  ]);
+  expect(texts(rows[1], "cell")).toEqual([
+    "CLM-1001",
+    "Tom Becker",
+    "Trip delay",
+    "Suitcase lost on a connecting flight",
+    "$420.00",
+    "2026-07-02",
+    "Decided",
+    "Approve",
+    "$420.00",
+  ]);
+  expect(texts(rows[2], "cell")).toEqual([
+    "CLM-1002",
+    "Tom Becker",
+    "Baggage",
+    "Suitcase lost on a connecting flight",
+    "$1,150.00",
+    "2026-07-02",
+    "Waiting",
+    "",
+    "",
+  ]);
+});
+
+it("leaves the payout empty on a decline", async () => {
+  stubApi({
+    "GET /api/claims": () => [{ ...decided, decision: "decline", payout: 0 }],
+  });
+  render(<Queue />);
+  const cells = within((await screen.findAllByRole("row"))[1]).getAllByRole(
+    "cell",
+  );
+  expect(cells[7].textContent).toBe("Decline");
+  expect(cells[8].textContent).toBe("");
 });
 
 it("counts the claims in each status", async () => {

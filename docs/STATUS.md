@@ -13,7 +13,7 @@ The pilot is built from `docs/PLAN.md`, and all six phases are done and checked.
 - `agent/agent.py`: the UnderCover Agent. `run(claim_id, thread_id)` fetches its instructions from the API, runs LangChain's `create_agent` on OpenRouter with five tools (`get_claim`, `get_policy`, `get_claim_history`, `decide_claim` and `pay_claim`), and posts each step back to the API. `decide_claim` and `pay_claim` act only on the claim the run was given. It uses `openai/gpt-6-luna` with low reasoning effort, or the model in `MODEL_NAME`.
 - `agent/tests/stub.py`: the stub model every test uses. No test calls a real model.
 - `dashboard/`: in the brand, in light and dark mode.
-  - The queue (`#/`) shows where each claim stands, with a Work the queue button.
+  - The queue (`#/`) shows where each claim stands, the agent's decision and the payout in columns of their own, and a Work the queue button.
   - A claim (`#/claims/CLM-1001`) shows the claim in full, its policy, the customer's earlier claims, the agent's decision and payment, and the agent's steps, with a Run the agent button while it waits. On a claim waiting for sign-off, a handler picks their name and signs off, which makes the payment.
   - The instructions (`#/instructions`) show what the agent reads, read only.
   - The queue and the claim refresh every second while the agent works.

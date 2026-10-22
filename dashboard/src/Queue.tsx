@@ -71,6 +71,7 @@ export function Queue() {
                 <th>Submitted</th>
                 <th>Status</th>
                 <th>Decision</th>
+                <th className="number">Payout</th>
               </tr>
             </thead>
             <tbody>
@@ -95,9 +96,11 @@ export function Queue() {
                     {claim.decision && (
                       <span className={`badge ${claim.decision}`}>
                         {DECISIONS[claim.decision]}
-                        {claim.payout ? `, ${money(claim.payout)}` : ""}
                       </span>
                     )}
+                  </td>
+                  <td className="number">
+                    {claim.payout ? money(claim.payout) : ""}
                   </td>
                 </tr>
               ))}
