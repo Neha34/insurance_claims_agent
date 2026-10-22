@@ -46,12 +46,18 @@ def tools(http: httpx.Client, claim_id: str) -> list[BaseTool]:
 
     @tool
     def get_policy(policy_id: str) -> str:
-        """Get a policy: its plan and limits, add-ons, trip and travelers."""
+        """Get a policy: its plan and limits, add-ons, trip and travelers.
+
+        Call it after get_claim, with the claim's policy_id, such as "POL-2001".
+        """
         return call("GET", f"/api/policies/{policy_id}")
 
     @tool
     def get_claim_history(customer_id: str) -> str:
-        """Get a customer's earlier claims."""
+        """Get a customer's earlier claims.
+
+        Call it after get_claim, with the claim's customer_id, such as "CUS-3001".
+        """
         return call("GET", f"/api/customers/{customer_id}/claims")
 
     @tool
@@ -92,7 +98,10 @@ def describe(message: BaseMessage) -> Iterator[tuple[str, str]]:
         if text := str(message.text).strip():
             yield "message", text
         for call in message.tool_calls:
-            args = ", ".join(f"{k}={json.dumps(v)}" for k, v in call["args"].items())
+            args = ", ".join(
+                f"{k}={json.dumps(v, ensure_ascii=False)}"
+                for k, v in call["args"].items()
+            )
             yield "tool_call", f"{call['name']}({args})"
     elif isinstance(message, ToolMessage):
         result = str(message.text)

@@ -196,6 +196,11 @@ def now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def settled(payout: float) -> Status:
+    """Where a decided claim stands: an approval over the limit waits for sign-off."""
+    return Status.WAITING_FOR_SIGN_OFF if payout > APPROVAL_LIMIT else Status.DECIDED
+
+
 def pay(conn: sqlite3.Connection, claim_id: str, amount: float) -> None:
     paid = conn.execute(
         "UPDATE claims SET paid_amount = ?, paid_at = ?"
@@ -272,15 +277,16 @@ def list_handlers() -> list[Handler]:
 def decide_claim(claim_id: str, request: DecisionRequest) -> dict[str, Any]:
     """Record the decision on a claim, with its payout, reason and policy section."""
     payout = round(request.payout, 2)
-    status = Status.WAITING_FOR_SIGN_OFF if payout > APPROVAL_LIMIT else Status.DECIDED
     with db.connect() as conn:
         one(conn, CLAIM, claim_id, "claim")
+        # During a run the claim stays in progress, and run_agent settles it.
         decided = conn.execute(
-            "UPDATE claims SET status = ?, decision = ?, payout = ?, reason = ?,"
-            " policy_section = ?, decided_at = ?"
-            " WHERE claim_id = ? AND status IN (?, ?)",
+            "UPDATE claims SET status = CASE WHEN status = ? THEN status ELSE ? END,"
+            " decision = ?, payout = ?, reason = ?, policy_section = ?, decided_at = ?"
+            " WHERE claim_id = ? AND decision IS NULL AND status IN (?, ?)",
             (
-                status,
+                Status.IN_PROGRESS,
+                settled(payout),
                 request.decision,
                 payout,
                 request.reason,
@@ -314,7 +320,8 @@ def pay_claim(claim_id: str, request: PaymentRequest) -> dict[str, Any]:
             raise HTTPException(
                 403,
                 f"A payout over {dollars(APPROVAL_LIMIT)} waits for a handler's"
-                f" sign-off. Claim {claim_id} is waiting for sign-off.",
+                " sign-off, so this payment is refused. A handler will sign off"
+                " and pay it.",
             )
         pay(conn, claim_id, row["payout"])
         return claim_state(one(conn, CLAIM, claim_id, "claim"))
@@ -394,18 +401,25 @@ def start(claim_id: str) -> str | None:
 
 
 def run_agent(claim_id: str, thread_id: str) -> None:
-    """Run the agent, and put the claim back to waiting if it ends undecided."""
+    """Run the agent, then settle the claim, or put it back to waiting if undecided."""
     try:
         agent.run(claim_id, thread_id)
     except Exception as error:  # any failure goes on the claim, for the team to see
         record_step(claim_id, thread_id, StepKind.ERROR, f"The run failed: {error}")
     with db.connect() as conn:
-        undecided = conn.execute(
-            "UPDATE claims SET status = ? WHERE claim_id = ? AND status = ?"
-            " AND thread_id = ?",
-            (Status.WAITING, claim_id, Status.IN_PROGRESS, thread_id),
-        ).rowcount
-    if undecided:
+        row = conn.execute(
+            "SELECT decision, payout FROM claims"
+            " WHERE claim_id = ? AND status = ? AND thread_id = ?",
+            (claim_id, Status.IN_PROGRESS, thread_id),
+        ).fetchone()
+        if row is not None:
+            status = (
+                Status.WAITING if row["decision"] is None else settled(row["payout"])
+            )
+            conn.execute(
+                "UPDATE claims SET status = ? WHERE claim_id = ?", (status, claim_id)
+            )
+    if row is not None and row["decision"] is None:
         record_step(
             claim_id,
             thread_id,

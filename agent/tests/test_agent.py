@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 import pytest
 from fastapi.testclient import TestClient
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 
 from agent import agent
 from agent.tests.stub import (
@@ -115,6 +115,29 @@ def test_start_run_runs_the_agent_in_the_background(
     assert again.json()["detail"] == "Claim CLM-1001 is not waiting"
 
 
+@pytest.mark.parametrize(
+    ("claim_id", "settled"),
+    [("CLM-1001", "decided"), ("CLM-1012", "waiting_for_sign_off")],
+)
+def test_the_claim_stays_in_progress_until_the_run_ends(
+    client: TestClient, stub: Stub, claim_id: str, settled: str
+) -> None:
+    seen: list[str] = []
+
+    def respond(messages: list[BaseMessage]) -> AIMessage:
+        if any(
+            isinstance(m, ToolMessage) and m.name == "decide_claim" for m in messages
+        ):
+            seen.append(client.get(f"/api/claims/{claim_id}").json()["status"])
+        return approve_in_full(messages)
+
+    stub(respond)
+    client.post(f"/api/claims/{claim_id}/runs")
+
+    assert seen == ["in_progress", "in_progress"]
+    assert client.get(f"/api/claims/{claim_id}").json()["status"] == settled
+
+
 def test_start_run_on_a_claim_that_does_not_exist(client: TestClient) -> None:
     assert client.post("/api/claims/CLM-9999/runs").status_code == 404
 
@@ -204,3 +227,20 @@ def test_a_long_tool_result_is_cut_short() -> None:
     [(kind, text)] = agent.describe(message)
     assert kind == "tool_result"
     assert text == "get_claim: " + "x" * agent.RESULT_LENGTH + "…"
+
+
+def test_a_tool_call_keeps_its_punctuation() -> None:
+    message = AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "name": "decide_claim",
+                "args": {"reason": "Exceeds the plan’s waiting period."},
+                "id": "call-1",
+                "type": "tool_call",
+            }
+        ],
+    )
+    [(kind, text)] = agent.describe(message)
+    assert kind == "tool_call"
+    assert text == 'decide_claim(reason="Exceeds the plan’s waiting period.")'

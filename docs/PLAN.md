@@ -175,9 +175,15 @@ Success criteria:
 
 ## Phase 6: The pilot run
 
-Runs the real agent on the queue, fixes what a real model shows up, and finishes the documents. This phase needs `OPENROUTER_API_KEY` in `.env`.
+Runs the real agent on the queue, fixes what a real model shows up, and finishes the documents. This phase needs `OPENROUTER_API_KEY` in `.env`. The queue is about 25 claims of five or six model calls each; on `openrouter/free`, run a few claims rather than the whole queue to stay inside the free daily allowance.
 
-Not done yet: there was no `.env` when Phases 1 to 5 were built, so the documents are updated and the run with a real model waits for the key. `npm run check` passed at the end of Phase 5 and again after the documents changed. The queue is about 25 claims of five or six model calls each; on `openrouter/free`, run a few claims rather than the whole queue to stay inside the free daily allowance.
+What the real run with `openai/gpt-6-luna` showed, and what changed:
+
+- The model guessed the policy and customer ids before it had read the claim. The instructions and the tool descriptions now say to read the claim first and use the ids it gives.
+- A claim left "in progress" as soon as the agent decided it, so the claim page stopped refreshing before the agent paid and gave its last message. A claim now stays in progress until its run ends, and the backend then settles it as decided or waiting for sign-off.
+- Tool calls showed characters such as the curly apostrophe as escape codes. Steps now keep them as they are.
+
+Working the queue from a fresh database decided all 25 claims: 12 approvals paid, 3 approvals over $1,000 waiting for sign-off, 6 declines and 4 referrals, with no failed runs. A handler then signed off CLM-1003 in the dashboard. The decisions are not yet scored against the handlers' own.
 
 - Fixes only what the real run shows to be broken, such as a tool the model misuses or an unclear instruction. It doesn't tune the instructions to the handlers' decisions, which this build never opens.
 - `docs/STATUS.md`: what's built, how to run it and how to start over.
@@ -185,12 +191,12 @@ Not done yet: there was no `.env` when Phases 1 to 5 were built, so the document
 
 Success criteria:
 
-- [ ] With the backend started on a fresh database, Work the queue moves every claim out of Waiting. Any claim that ends back in Waiting has a step that says why, and running it again decides it.
-- [ ] `GET /api/claims` shows every decided claim with a decision; each has a reason of two or three sentences and a policy section.
-- [ ] Every approval over $1,000 is waiting for sign-off with no payment. Every approval up to $1,000 is paid exactly its payout.
-- [ ] With the Playwright MCP server, the steps of a claim appear one by one while the real agent works, and signing off an over-limit approval pays it.
+- [x] With the backend started on a fresh database, Work the queue moves every claim out of Waiting. Any claim that ends back in Waiting has a step that says why, and running it again decides it.
+- [x] `GET /api/claims` shows every decided claim with a decision; each has a reason of two or three sentences and a policy section.
+- [x] Every approval over $1,000 is waiting for sign-off with no payment. Every approval up to $1,000 is paid exactly its payout.
+- [x] With the Playwright MCP server, the steps of a claim appear one by one while the real agent works, and signing off an over-limit approval pays it. (Checked with Playwright scripts, as in Phase 1: CLM-1001's steps appeared as 2, 6, 8, 10 and 11 while it stayed in progress, and signing off CLM-1003 paid $3,750.00.)
 - [x] `docs/STATUS.md` and `README.md` describe the pilot as built.
-- [ ] `npm run check` passes, still with the stub model.
+- [x] `npm run check` passes, still with the stub model.
 
 ## Not in this build
 

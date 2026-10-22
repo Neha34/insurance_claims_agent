@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,7 +13,7 @@ def decide(
     decision: str,
     payout: float,
     reason: str = "Covered by the policy wording.",
-) -> dict[str, object]:
+) -> dict[str, Any]:
     response = client.post(
         f"/api/claims/{claim_id}/decision",
         json={
@@ -205,3 +206,32 @@ def test_deciding_a_claim_that_does_not_exist(client: TestClient) -> None:
         },
     )
     assert response.status_code == 404
+
+
+def test_a_decision_during_a_run_keeps_the_claim_in_progress(
+    client: TestClient,
+) -> None:
+    with db.connect() as conn:
+        conn.execute(
+            "UPDATE claims SET status = 'in_progress', thread_id = 'thread-1'"
+            " WHERE claim_id = 'CLM-1001'"
+        )
+    state = decide(client, "CLM-1001", "approve", 420.0)
+    assert state["status"] == "in_progress"
+    assert state["decision"]["payout"] == 420.0
+
+    response = client.post(
+        "/api/claims/CLM-1001/decision",
+        json={
+            "decision": "decline",
+            "payout": 0,
+            "reason": "Changed my mind.",
+            "policy_section": "Section 3",
+        },
+    )
+    assert response.status_code == 409
+
+    status, state = pay(client, "CLM-1001", 420.0)
+    assert status == 200
+    assert state["status"] == "in_progress"
+    assert state["payment"]["amount"] == 420.0

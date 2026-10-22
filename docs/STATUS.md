@@ -1,6 +1,6 @@
 # Status
 
-The pilot is built from `docs/PLAN.md`. Phases 1 to 5 are done and checked. In Phase 6, the documents are up to date, but the run with a real model is still to do: it needs `OPENROUTER_API_KEY` in `.env`.
+The pilot is built from `docs/PLAN.md`, and all six phases are done and checked. On the pilot run, `openai/gpt-6-luna` worked the whole queue from a fresh database: 12 approvals paid, 3 approvals over $1,000 waiting for sign-off, 6 declines and 4 referrals, with no failed runs.
 
 ## What's built
 
@@ -8,7 +8,7 @@ The pilot is built from `docs/PLAN.md`. Phases 1 to 5 are done and checked. In P
 - `backend/main.py`: the API. Every operation has an operation id, a one-line docstring and no optional inputs.
   - Reading: `health`, `list_claims`, `get_claim`, `get_policy`, `get_claim_history`, `list_handlers` and `get_instructions`. The API never returns a customer's contact details or date of birth.
   - Deciding: `decide_claim`, `pay_claim` and `sign_off_claim`. `pay_claim` pays only the approved payout, once, and refuses a payout over the $1,000 limit in `data/company.json` with a 403. A handler's `sign_off_claim` makes that payment.
-  - Running: `start_run` starts the agent on a waiting claim in the background, `work_queue` works through the waiting claims one at a time, and `add_step` and `list_steps` record and show the steps. A run that fails or ends undecided puts the claim back to waiting, with a step that says why.
+  - Running: `start_run` starts the agent on a waiting claim in the background, `work_queue` works through the waiting claims one at a time, and `add_step` and `list_steps` record and show the steps. A claim stays in progress until its run ends, so the team sees every step, and the backend then settles it as decided or waiting for sign-off. A run that fails or ends undecided puts the claim back to waiting, with a step that says why.
 - `backend/instructions.md`: the agent's instructions. `get_instructions` serves them followed by `data/policy_wording.md`.
 - `agent/agent.py`: the UnderCover Agent. `run(claim_id, thread_id)` fetches its instructions from the API, runs LangChain's `create_agent` on OpenRouter with five tools (`get_claim`, `get_policy`, `get_claim_history`, `decide_claim` and `pay_claim`), and posts each step back to the API. `decide_claim` and `pay_claim` act only on the claim the run was given. It uses `openai/gpt-6-luna` with low reasoning effort, or the model in `MODEL_NAME`.
 - `agent/tests/stub.py`: the stub model every test uses. No test calls a real model.
@@ -32,5 +32,4 @@ The database is `undercover.db` at the repo root, or the path in `UNDERCOVER_DB`
 
 ## Still to do
 
-- Phase 6's run with a real model: work the queue, check every decision has a reason and a policy section, and check that approvals over $1,000 wait for sign-off.
 - Scoring the agent against the handlers' decisions in `data/evals/`, which the plan leaves for a later build.
