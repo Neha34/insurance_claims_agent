@@ -4,6 +4,9 @@
 !.env.example
 *.pem
 *.key
+guides/*
+labs/*
+setup/*
 
 # Python
 __pycache__/
